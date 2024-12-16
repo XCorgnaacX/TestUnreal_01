@@ -48,6 +48,7 @@ void ATU_Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+
 }
 
 // Called to bind functionality to input
@@ -102,15 +103,36 @@ void ATU_Character::PrimaryAttack()
 
 void ATU_Character::PrimaryAttack_TimeElapsed()
 {
+	FVector CameraLocation = CameraComp->GetComponentLocation();
+	FRotator CameraRotation = CameraComp->GetComponentRotation();
+
+	FVector TraceStart = CameraLocation;
+	FVector TraceEnd = TraceStart + (CameraRotation.Vector() * 10000.0f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this); // Ignore self
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams);
+
+	// Determine target point
+	FVector TargetPoint = bHit ? HitResult.ImpactPoint : TraceEnd;
+
+	// Debug line trace
+	DrawDebugLine(GetWorld(), TraceStart, TargetPoint, FColor::Red, false, 2.0f, 0, 2.0f);
+
 	FVector HandLocation = GetMesh()->GetSocketLocation("Muzzle_01");
 
-	FTransform SpawnTM = FTransform(GetControlRotation(), HandLocation);
+	FVector LaunchDirection = (TargetPoint - HandLocation).GetSafeNormal();
+
+	FTransform SpawnTM = FTransform(LaunchDirection.Rotation(), HandLocation);
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	SpawnParams.Instigator = this;
 
 	GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnTM, SpawnParams);
+
 }
 
 
